@@ -1,0 +1,75 @@
+---
+title: "ML-HW2"
+author: "Vincent Jin"
+date: "2023-02-14"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Statistical Machine Learning - Homework 2
+# Vincent Jin
+
+## Person I worked with: Jing Wang
+
+ISL 5.4 - 1 3 5 6
+ISL 6.8 - 1 8 9
+
+## Resampling Methods
+## Problem 5.4-1
+
+Using basic statistical properties of the variance, as well as single variable calculus, derive (5.6). In other words, prove that $\alpha$ given by (5.6) does indeed minimize $Var(\alpha X + (1 − \alpha)Y )$.
+
+***Answer***
+By plug in $\alpha$, we can get:
+$$
+\begin{aligned}
+Var(\alpha X+(1 − \alpha)Y) &= Var(\alpha X)+Var((1 − \alpha)Y)+2Cov(\alpha X,(1 − \alpha)Y) \\
+ &= \alpha^2 Var(X)+(1 − \alpha)^2Var(Y) + 2\alpha(1 − \alpha)Cov(X,Y) \\
+ &= \sigma^{2}_{X} \alpha^{2} + \sigma^{2}_Y (1 − \alpha)2+2\sigma_{XY}(−\alpha^{2} + \alpha)
+\end{aligned}
+$$
+Then take a deriviation of the formula, and set to 0 since we want to minimize $Var(\alpha X + (1 − \alpha)Y )$:
+$$
+\begin{aligned}
+0 &= \frac{d}{d_{\alpha}}(\sigma^{2}_{X} \alpha^{2} + \sigma^{2}_Y (1 − \alpha)2+2\sigma_{XY}(−\alpha^{2} + \alpha)) \\
+&= 2\sigma^2_X \alpha+2\sigma^2_Y (1−\alpha)(−1)+2\sigma_XY (−2\alpha + 1) \\
+&= (\sigma^2_X + \sigma^2_Y−2\sigma_XY)\alpha − \sigma^2_Y + \sigma_XY \\
+&= \frac{\sigma^2_Y - \sigma_{XY}}{\sigma^2_X + \sigma^2_Y - 2\sigma_{XY}}
+\end{aligned}
+$$
+
+
+## Problem 5.4-3
+
+We now review k-fold cross-validation.
+### (a) Explain how k-fold cross-validation is implemented.
+
+***Answer***
+
+The k-fold cross-validation simply means that we randomly divide the dataset into k different subsets, and use each one of the k subsets as a validation set while using all other subsets as training sets.
+
+### (b) What are the advantages and disadvantages of k-fold crossvalidation relative to:
+i. The validation set approach?
+        
+***Answer***
+
+The validation is simply and easy to understand and implemented. However, as compared to k-fold cross-validation, the main drawbacks of validation set approach includes:
+1. the test error rate may be highly variable depends on the observations being included in the training and test sets.
+2. the validation set error rate may tend to overestimate the test error rate for the model fit on the entire data set.
+        
+ii. LOOCV?
+
+***Answer***
+
+As a special case of k-fold cross-validation, instead of splitting the dataset into k groups with length of n/k, in LOOCV approach, the dataset is splitted into k=n groups. This means that each one observation will be used as a validation set while all other observations being used as training set. This approach is most computational extensive and yield lower bias but higher variable results as compared to k-fold cross-validation.
+
+## Problem 5.4-5
+
+In Chapter 4, we used logistic regression to predict the probability of default using income and balance on the Default data set. We will now estimate the test error of this logistic regression model using the validation set approach. Do not forget to set a random seed before beginning your analysis.
+
+(a) Fit a logistic regression model that uses income and balance to predict default.
+
+``` {r C5Q5}
