@@ -18,25 +18,25 @@ ISL 5.4 - 1 3 5 6
 ISL 6.8 - 1 8 9
 
 ## Resampling Methods
-## Problem 5.4-1
+## Problem 5.4 - 1
 
-Using basic statistical properties of the variance, as well as single variable calculus, derive (5.6). In other words, prove that $\alpha$ given by (5.6) does indeed minimize $Var(\alpha X + (1 − \alpha)Y )$.
+Using basic statistical properties of the variance, as well as single variable calculus, derive (5.6). In other words, prove that $\alpha$ given by (5.6) does indeed minimize $Var(\alpha X + (1 - \alpha)Y )$.
 
 ***Answer***
 By plug in $\alpha$, we can get:
 $$
 \begin{aligned}
-Var(\alpha X+(1 − \alpha)Y) &= Var(\alpha X)+Var((1 − \alpha)Y)+2Cov(\alpha X,(1 − \alpha)Y) \\
- &= \alpha^2 Var(X)+(1 − \alpha)^2Var(Y) + 2\alpha(1 − \alpha)Cov(X,Y) \\
- &= \sigma^{2}_{X} \alpha^{2} + \sigma^{2}_Y (1 − \alpha)2+2\sigma_{XY}(−\alpha^{2} + \alpha)
+Var(\alpha X+(1 - \alpha)Y) &= Var(\alpha X)+Var((1 - \alpha)Y)+2Cov(\alpha X,(1 - \alpha)Y) \\
+ &= \alpha^2 Var(X)+(1 - \alpha)^2Var(Y) + 2\alpha(1 - \alpha)Cov(X,Y) \\
+ &= \sigma^{2}_{X} \alpha^{2} + \sigma^{2}_Y (1 - \alpha)2+2\sigma_{XY}(-\alpha^{2} + \alpha)
 \end{aligned}
 $$
-Then take a deriviation of the formula, and set to 0 since we want to minimize $Var(\alpha X + (1 − \alpha)Y )$:
+Then take a deriviation of the formula, and set to 0 since we want to minimize $Var(\alpha X + (1 - \alpha)Y )$:
 $$
 \begin{aligned}
-0 &= \frac{d}{d_{\alpha}}(\sigma^{2}_{X} \alpha^{2} + \sigma^{2}_Y (1 − \alpha)2+2\sigma_{XY}(−\alpha^{2} + \alpha)) \\
-&= 2\sigma^2_X \alpha+2\sigma^2_Y (1−\alpha)(−1)+2\sigma_XY (−2\alpha + 1) \\
-&= (\sigma^2_X + \sigma^2_Y−2\sigma_XY)\alpha − \sigma^2_Y + \sigma_XY \\
+0 &= \frac{d}{d_{\alpha}}(\sigma^{2}_{X} \alpha^{2} + \sigma^{2}_Y (1 - \alpha)2+2\sigma_{XY}(-\alpha^{2} + \alpha)) \\
+&= 2\sigma^2_X \alpha+2\sigma^2_Y (1-\alpha)(-1)+2\sigma_XY (-2\alpha + 1) \\
+&= (\sigma^2_X + \sigma^2_Y-2\sigma_XY)\alpha - \sigma^2_Y + \sigma_XY \\
 &= \frac{\sigma^2_Y - \sigma_{XY}}{\sigma^2_X + \sigma^2_Y - 2\sigma_{XY}}
 \end{aligned}
 $$
@@ -73,3 +73,412 @@ In Chapter 4, we used logistic regression to predict the probability of default 
 (a) Fit a logistic regression model that uses income and balance to predict default.
 
 ``` {r C5Q5}
+library(ISLR)
+set.seed(1)
+reg1 <- glm(default ~ income + balance, data = Default, family = "binomial")
+summary(reg1)
+```
+
+(b) Using the validation set approach, estimate the test error of this model. In order to do this, you must perform the following steps:
+i. Split the sample set into a training set and a validation set.
+
+``` {r C5Q5b1}
+training <- sample(dim(Default)[1], dim(Default)[1]/2)
+```
+
+ii. Fit a multiple logistic regression model using only the training observations.
+
+``` {r C5Q5b2}
+reg2 <- glm(default~income+balance, data = Default, family = "binomial", subset = training)
+summary(reg2)
+```
+
+iii. Obtain a prediction of default status for each individual in the validation set by computing the posterior probability of default for that individual, and classifying the individual to the default category if the posterior probability is greater than 0.5.
+
+``` {r C5Q5b3}
+reg2.prob <- predict(reg2, newdata = Default[-training, ], type = "response")
+reg2.pred <- rep("No", length(reg2.prob))
+reg2.pred[reg2.prob > 0.5] = "Yes"
+```
+
+iv. Compute the validation set error, which is the fraction of the observations in the validation set that are misclassified.
+
+``` {r C5Q5b4}
+mean(reg2.pred != Default[-training, ]$default)
+```
+
+***Answer***
+
+The fraction of the observation in the validation set that are missclassified is 2.54%.
+
+(c) Repeat the process in (b) three times, using three different splits of the observations into a training set and a validation set. Comment on the results obtained.
+
+``` {r C5Q5c}
+reg_result <- list()
+per_result <- list()
+seed <- c(12, 20, 25)
+
+for (i in seed) {
+  set.seed(i)
+  training_loop <- sample(dim(Default)[1], dim(Default)[1] / 2)
+  reg_temp <- glm(default ~ income + balance, data = Default, family = "binomial", subset = training_loop)
+  reg_result <- append(reg_result, reg_temp)
+  prob_temp <- predict(reg_temp, newdata = Default[-training_loop, ], type = "response")
+  pred_temp <- rep("No", length(prob_temp))
+  pred_temp[prob_temp > 0.5] <- "Yes"
+  mean_temp <- mean(pred_temp != Default[-training_loop, ]$default)
+  per_result <- append(per_result, mean_temp * 100)
+}
+```
+
+***Answer***
+
+The results from three tries demonstrated that with different observations being included in different training/validation sets, the test error rate may be different.
+
+(d) Now consider a logistic regression model that predicts the probability of default using income, balance, and a dummy variable for student. Estimate the test error for this model using the validation set approach. Comment on whether or not including a dummy variable for student leads to a reduction in the test error rate.
+
+``` {r C5Q5d}
+set.seed(1)
+training_dummy <- sample(dim(Default)[1], dim(Default)[1] / 2)
+reg3 <- glm(default ~ income+balance+student, data = Default, family = "binomial", subset = training_dummy)
+reg3_prob <- predict(reg3, newdata = Default[-training_dummy, ], type = "response")
+reg3_pred <- rep("No", length(reg3_prob))
+reg3_pred[reg3_prob > 0.5] <- "Yes"
+mean(reg3_pred != Default[-training_dummy, ]$default)
+```
+
+***Answer***
+
+Setting up a dummy variable did not lead to reductions in the test error rate.
+
+## Problem 5.4-6
+
+We continue to consider the use of a logistic regression model to predict the probability of default using income and balance on the Default data set. In particular, we will now compute estimates for the standard errors of the income and balance logistic regression coefficients in two different ways: (1) using the bootstrap, and (2) using the standard formula for computing the standard errors in the glm() function. Do not forget to set a random seed before beginning your analysis.
+
+(a) Using the summary() and glm() functions, determine the estimated standard errors for the coefficients associated with income and balance in a multiple logistic regression model that uses both predictors.
+
+``` {r C5Q6a}
+reg4 <- glm(default ~ income + balance, data = Default, family = "binomial")
+summary(reg4)
+```
+
+***Answer***
+
+Based on the regression results, we can see that the standard error for income as predictor is $4.985 \times 10^{-6}$ and for balance as predictor is $2.274 \times 10^{-4}$.
+
+(b) Write a function, boot.fn(), that takes as input the Default data set as well as an index of the observations, and that outputs the coefficient estimates for income and balance in the multiple logistic regression model.
+
+``` {r C5Q6b}
+boot.fn <- function(data, index) {
+  fit.glm <- glm(default ~ income + balance, data = data, family = "binomial", subset = index)
+  return(coef(fit.glm))
+}
+```
+
+(c) Use the boot() function together with your boot.fn() function to estimate the standard errors of the logistic regression coefficients for income and balance.
+
+``` {r C5Q6c}
+set.seed(1)
+library(boot)
+boot(Default, boot.fn, 100)
+```
+
+***Answer***
+
+The results from bootstrap suggesting that the standard error for coefficients is $4.19 \times 10^{-6}$ for income and $2.23 \times 10^{-4}$ for balance.
+
+(d) Comment on the estimated standard errors obtained using the glm() function and using your bootstrap function.
+
+***Answer***
+
+Both logistic and bootstrap function provided similar level of precision as indicated by very minor differences among standard error of coefficients. However, the bootstrap tended to provide better estimations with slightly smaller standard errors.
+
+
+## ISL 6.8 - 1, 8, 9
+## Question 6.8 - 1
+
+We perform best subset, forward stepwise, and backward stepwise selection on a single data set. For each approach, we obtain p + 1 models, containing 0, 1, 2, . . . , p predictors. Explain your answers:
+
+(a) Which of the three models with k predictors has the smallest training RSS?
+
+***Answer***
+
+The models of best subset with k predictors has the smallest training RSS. For the other 2 models, in forward stepwise, the smallest RSS will be the model that augment the predictors in $M_{k-1}$
+ with one additional predictor, and for backward stepwise it will be $M_{k+1}$, so it should be the best subset.
+
+(b) Which of the three models with k predictors has the smallest test RSS ?
+
+***Answer***
+
+Smallest test RSS may be from any of the three models. Although best selection may provide the smaller test RSS because it takes into account more models than the other methods, other models may be able to have smallest test RSS by chance.
+
+(c) True or False:
+
+i. The predictors in the k-variable model identified by forward stepwise are a subset of the predictors in the (k+1)-variable model identified by forward stepwise selection.
+
+***True***
+
+ii. The predictors in the k-variable model identified by back- ward stepwise are a subset of the predictors in the (k + 1)- variable model identified by backward stepwise selection.
+
+***True***
+
+iii. The predictors in the k-variable model identified by back- ward stepwise are a subset of the predictors in the (k + 1)- variable model identified by forward stepwise selection.
+
+***False***
+
+iv. The predictors in the k-variable model identified by forward stepwise are a subset of the predictors in the (k+1)-variable model identified by backward stepwise selection. 
+
+***False***
+
+v. The predictors in the k-variable model identified by best subset are a subset of the predictors in the (k + 1)-variable model identified by best subset selection.
+
+***False***
+
+
+## Question 6.8 - 8
+
+In this exercise, we will generate simulated data, and will then use this data to perform best subset selection.
+
+(a) Use the rnorm() function to generate a predictor X of length n = 100, as well as a noise vector  of length n = 100.
+
+``` {r C6Q8a}
+set.seed(1)
+x <- rnorm(100)
+eps <- rnorm(100)
+```
+
+(b) Generate a response vector Y of length n = 100 according to the model Y = b0 +b1$X$ +b2$X^2$ +b3$X^3$ + eps, where b0, b1, b2, and b3 are constants of your choice.
+
+``` {r C6Q8b}
+b0 <- 5
+b1 <- -5
+b2 <- 10
+b3 <- -10
+y <- b0 + b1 * x + b2 * x^2 + b3 * x^3 + eps
+```
+
+(c) Use the regsubsets() function to perform best subset selection in order to choose the best model containing the predictors X,X2,…,X10. What is the best model obtained according to Cp, BIC, and adjusted R2? Show some plots to provide evidence for your answer, and report the coefficients of the best model obtained. Note you will need to use the data.frame() function to create a single data set containing both X and Y .
+
+``` {r C6Q8c}
+# install.packages("leaps")
+
+library(leaps)
+data <- data.frame(y = y, x = x)
+reg <- regsubsets(y ~ poly(x, 10, raw = T), data = data, nvmax = 10)
+regsum <- summary(reg)
+which.min(regsum$cp)
+which.min(regsum$bic)
+which.max(regsum$adjr2)
+plot(regsum$cp, xlab = "Number of variables", ylab = "Cp", type = "l")
+points(4, regsum$cp[which.min(regsum$cp)], col = "blue", cex = 2, pch = 15)
+plot(regsum$bic, xlab = "Number of variables", ylab = "BIC", type = "l")
+points(3, regsum$bic[which.min(regsum$bic)], col = "blue", cex = 2, pch = 15)
+plot(regsum$adjr2, xlab = "Number of variables", ylab = "Adjusted R^2", type = "l")
+points(4, regsum$adjr2[which.max(regsum$adjr2)], col = "blue", cex = 2, pch = 15)
+coef(reg,which.min(regsum$cp))
+coef(reg, which.min(regsum$bic))
+coef(reg, which.max(regsum$adjr2))
+```
+
+***Answer***
+
+The results have suggested that the 4-variables model was picked in Cp, coefs are: 5.07, -4.61, 9.85, -10.44; the 3-variables model was pciked with BIC, coefficients are: 5.06, -5.02, 9.88, -8.98; the 4-variables model with adjusted $R^2$, coefficients are: 5.07, -4.61, 9.85, -10.44.
+
+(d) Repeat (c), using forward stepwise selection and also using backwards stepwise selection. How does your answer compare to the results in (c)?
+
+``` {r C6Q8d}
+fwd.data <- regsubsets(y ~ poly(x, 10, raw = T), data = data, nvmax = 10, method = "forward")
+sumfwd <- summary(fwd.data)
+
+plot(sumfwd$cp, xlab = "Number of variables", ylab = "Cp", type = "l")
+points(which.min(sumfwd$cp), sumfwd$cp[which.min(sumfwd$cp)], col = "blue", cex = 2, pch = 15)
+plot(sumfwd$bic, xlab = "Number of variables", ylab = "BIC", type = "l")
+points(which.min(sumfwd$bic), sumfwd$bic[which.min(sumfwd$bic)], col = "blue", cex = 2, pch = 15)
+plot(sumfwd$adjr2, xlab = "Number of variables", ylab = "Adjusted R^2", type = "l")
+points(which.max(sumfwd$adjr2), sumfwd$adjr2[which.max(sumfwd$adjr2)], col = "blue", cex = 2, pch = 15)
+
+bwd.data <- regsubsets(y ~ poly(x, 10, raw = T), data = data, nvmax = 10, method = "backward")
+sumbwd <- summary(bwd.data)
+
+plot(sumbwd$cp, xlab = "Number of variables", ylab = "Cp", type = "l")
+points(which.min(sumbwd$cp), sumbwd$cp[which.min(sumbwd$cp)], col = "blue", cex = 2, pch = 15)
+plot(sumbwd$bic, xlab = "Number of variables", ylab = "BIC", type = "l")
+points(which.min(sumbwd$bic), sumbwd$bic[which.min(sumbwd$bic)], col = "blue", cex = 2, pch = 15)
+plot(sumbwd$adjr2, xlab = "Number of variables", ylab = "Adjusted R^2", type = "l")
+points(which.max(sumbwd$adjr2), sumbwd$adjr2[which.max(sumbwd$adjr2)], col = "blue", cex = 2, pch = 15)
+```
+
+***Answer***
+
+Forward and Backward select both suggested the same variable numbers as compared to results in (a).
+
+(e) Now fit a lasso model to the simulated data, again using X,X2, . . . , X 10 as predictors. Use cross-validation to select the optimal value of lambda. Create plots of the cross-validation error as a function of lambda. Report the resulting coefficient estimates, and discuss the results obtained.
+
+``` {r C6Q8e}
+
+# install.packages("glmnet")
+
+library(glmnet)
+mat <- model.matrix(y ~ poly(x, 10, raw = T), data = data)[, -1]
+lasso.cv <- cv.glmnet(mat, y, alpha = 1)
+plot(lasso.cv)
+
+best <- lasso.cv$lambda.min
+best
+
+fit <- glmnet(mat, y, alpha = 1)
+predict(fit, s = best, type = "coefficients")[1:11,]
+```
+
+
+***Answer***
+
+The lasso method picked X, $X^2$, $X^3$, $X^4$ as variable for the model.
+
+(f) Now generate a response vector Y according to the model
+
+$$ Y = \beta_{0} + \beta_7 X^7 + \epsilon $$
+
+and perform best subset selection and the lasso. Discuss the results obtained.
+
+``` {r C6Q8f}
+b7 <- 15
+y1 <- b0 + b7 * x^7 + eps
+data_7 <- data.frame (y=y1, x=x)
+reg5 <- regsubsets(y1 ~ poly(x, 10, raw = T), data = data_7, nvmax = 10)
+reg5_sum <- summary(reg5)
+
+plot(reg5_sum$cp, xlab = "Number of variables", ylab = "Cp", type = "l")
+points(which.min(reg5_sum$cp), reg5_sum$cp[which.min(reg5_sum$cp)], col = "blue", cex = 2, pch = 15)
+plot(reg5_sum$bic, xlab = "Number of variables", ylab = "BIC", type = "l")
+points(which.min(reg5_sum$bic), reg5_sum$bic[which.min(reg5_sum$bic)], col = "blue", cex = 2, pch = 15)
+plot(reg5_sum$adjr2, xlab = "Number of variables", ylab = "Adjusted R^2", type = "l")
+points(which.max(reg5_sum$adjr2), reg5_sum$adjr2[which.max(reg5_sum$adjr2)], col = "blue", cex = 2, pch = 15)
+coef(reg5, 2)
+coef(reg5, 1)
+coef(reg5, 4)
+
+mat_7 <- model.matrix(y1 ~ poly(x, 10, raw = T), data = data_7)[, -1]
+lasso.cv_7 <- cv.glmnet(mat_7, y1, alpha = 1)
+best_7 <- lasso.cv_7$lambda.min
+best_7
+
+fit_7 <- glmnet(mat_7, y, alpha = 1)
+predict(fit_7, s = best_7, type = "coefficients")[1:11, ]
+```
+
+***Answer***
+
+Cp, BIC, adjusted $R^2$ picked 2, 1, 4 variable model respectively while the lasso method picked a single variable model of $X^3$.
+
+
+## Question 6.8 - 9
+
+In this exercise, we will predict the number of applications received using the other variables in the College data set.
+
+(a) Split the data set into a training set and a test set.
+
+``` {r C6Q9a}
+library(ISLR)
+data(College)
+set.seed(1)
+training_col <- sample(1:dim(College)[1], dim(College)[1] / 2)
+test_col <- -training_col
+col_tr <- College[training_col, ]
+col_te <- College[test_col, ]
+```
+
+(b) Fit a linear model using least squares on the training set, and report the test error obtained.
+
+``` {r C6Q9b}
+reg6 <- lm(Apps~., data = col_tr)
+reg6_pred <- predict(reg6, col_te)
+mean((reg6_pred - col_te$Apps)^2)
+```
+
+***Answer***
+
+The MSE is $1.14 \times 10^{6}$.
+
+(c) Fit a ridge regression model on the training set, with $\lambda$ chosen by cross-validation. Report the test error obtained.
+
+``` {r C6Q9c}
+mat_tr <- model.matrix(Apps ~ ., data = col_tr)
+mat_te <- model.matrix(Apps ~ ., data = col_te)
+grid <- 10 ^ seq(4, -2, length = 100)
+ridge <- glmnet(mat_tr, col_tr$Apps, alpha = 0, lambda = grid, thresh = 1e-12)
+ridge_cv <- cv.glmnet(mat_tr, col_tr$Apps, alpha = 0, lambda = grid, thresh = 1e-12)
+best_ridge <- ridge_cv$lambda.min
+best_ridge
+
+ridge_pred <- predict(ridge, s = best_ridge, newx = mat_te)
+mean((ridge_pred - col_te$Apps)^2)
+```
+
+***Answer***
+
+The ridge regression provided slightly smaller MSE, but overall similar.
+
+(d) Fit a lasso model on the training set, with lambda chosen by cross- validation. Report the test error obtained, along with the number of non-zero coefficient estimates.
+
+``` {r C6Q9d}
+lasso_cv <- cv.glmnet(mat_tr, col_tr$Apps, alpha = 1, lambda = grid, thresh = 1e-12)
+best_lasso <- lasso_cv$lambda.min
+best_lasso
+
+lasso_pred <- predict(lasso_cv, newx=mat_te, s=best_lasso)
+mean((col_te[, "Apps"] - lasso_pred)^2)
+
+lasso_fit <- glmnet(mat_tr, col_tr$Apps, alpha = 1, lambda = grid, thresh = 1e-12)
+predict(lasso_fit, s = best_lasso, type = "coefficients")
+```
+***Answer***
+
+The lasso method provided even slightly smaller MSE, but overall similar. All of the predictors had non-zero coefficient estimates.
+
+(e) Fit a PCR model on the training set, with M chosen by cross- validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+``` {r C6Q9e}
+# install.packages("pls")
+
+library(pls)
+
+pcr_fit <- pcr(Apps ~ ., data = col_tr, scale = TRUE, validation = "CV")
+validationplot(pcr_fit, val.type = "MSEP")
+
+pcr_pred <- predict(pcr_fit, col_te, ncomp = 10)
+mean((pcr_pred - col_te$Apps)^2)
+```
+
+***Answer***
+
+The PCR method provided higher MSE as compared to least square method.
+
+(f) Fit a PLS model on the training set, with M chosen by cross-validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+``` {r C6Q9f}
+pls_fit <- plsr(Apps ~ ., data = col_tr, scale = TRUE, validation = "CV")
+validationplot(pls_fit, val.type = "MSEP")
+pls_pred <- predict(pls_fit, col_te, ncomp = 10)
+mean((pls_pred - col_te$Apps)^2)
+```
+
+***Answer***
+
+The pls method provided lower MSE as comapred to least square method.
+
+(g) Comment on the results obtained. How accurately can we predict the number of college applications received? Is there much difference among the test errors resulting from these five approaches?
+
+``` {r C6Q9g}
+testavg <- mean(col_te[, "Apps"])
+lmr2 <- 1 - mean((reg6_pred - col_te$Apps)^2) / mean((testavg - col_te$Apps)^2)
+ridger2 <- 1 - mean((ridge_pred - col_te$Apps)^2) / mean((testavg - col_te$Apps)^2)
+lassor2 <- 1 - mean((lasso_pred - col_te$Apps)^2) / mean((testavg - col_te$Apps)^2)
+pcrr2 <- 1 - mean((pcr_pred - col_te$Apps)^2) / mean((testavg - col_te$Apps)^2)
+plsr2 <- 1 - mean((pls_pred - col_te$Apps)^2) / mean((testavg - col_te$Apps)^2)
+barplot(c(lmr2, ridger2, lassor2, pcrr2, plsr2), col="grey", names.arg=c("OLS", "Ridge", "Lasso", "PCR", "PLS"), main="R-squared")
+```
+
+***Answer***
+
+As the plot depicted, all models except PCR method had similar R-square value, which means every method except PCR method predicted college application with high accuracy.
